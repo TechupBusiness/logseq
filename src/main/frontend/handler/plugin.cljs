@@ -503,6 +503,13 @@
   ([type payload] (hook-plugin-app type payload nil))
   ([type payload plugin-id] (hook-plugin :app type payload plugin-id)))
 
+
+(defn invoke-plugin-custom-command [plugin-id handler params]
+  (when config/lsp-enabled?
+    (hook-plugin-app :custom-url-handler {:plugin-id plugin-id
+                                          :handler handler
+                                          :params params})))
+
 (defn hook-plugin-editor
   ([type payload] (hook-plugin-editor type payload nil))
   ([type payload plugin-id] (hook-plugin :editor type payload plugin-id)))

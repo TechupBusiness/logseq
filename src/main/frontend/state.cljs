@@ -891,6 +891,10 @@ Similar to re-frame subscriptions"
      (update-state! :editor/content (fn [m]
                                       (assoc m input-id value))))))
 
+(defn add-external-listener!
+  [event-type handler]
+  (swap! state update-in [:external-listeners event-type] (fnil conj #{}) handler))
+
 (defn get-edit-input-id
   []
   (ffirst (:editor/editing? @state)))

@@ -434,6 +434,14 @@
       (when-let [action (get-in (palette-handler/get-commands-unique) [id :action])]
         (apply plugin-handler/hook-lifecycle-fn! id action args)))))
 
+(defn ^:export register_plugin_url_handler
+  [pid handler-fn]
+  (when config/lsp-enabled?
+    (let [handler (fn [payload]
+                    (when (= (:plugin-id payload) pid)
+                      (handler-fn (:handler payload) (:params payload))))]
+      (state/add-external-listener! :custom-url-handler handler))))
+
 ;; flag - boolean | 'toggle'
 (def ^:export set_left_sidebar_visible
   (fn [flag]
