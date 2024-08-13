@@ -503,13 +503,6 @@
   ([type payload] (hook-plugin-app type payload nil))
   ([type payload plugin-id] (hook-plugin :app type payload plugin-id)))
 
-
-(defn invoke-plugin-custom-command [plugin-id handler params]
-  (when config/lsp-enabled?
-    (hook-plugin-app :custom-url-handler {:plugin-id plugin-id
-                                          :handler handler
-                                          :params params})))
-
 (defn hook-plugin-editor
   ([type payload] (hook-plugin-editor type payload nil))
   ([type payload plugin-id] (hook-plugin :editor type payload plugin-id)))
@@ -658,6 +651,29 @@
 (defn request-callback
   [^js pl req-id payload]
   (call-plugin pl :#lsp#request#callback {:requestId req-id :payload payload}))
+
+(def ^:private url-handlers (atom {}))
+
+(defn register-url-handler!
+  [pid handler-name handler-id callback-fn]
+  (swap! url-handlers assoc-in [pid handler-name] {:id handler-id :callback callback-fn}))
+
+(defn unregister-url-handler!
+  [pid handler-name]
+  (swap! url-handlers update pid dissoc handler-name))
+
+(defn url-handler-callback
+  [^js pl handler-id params]
+  (call-plugin pl :#lsp#url#handler#callback {:handlerId handler-id :params params}))
+
+(defn invoke-plugin-custom-command 
+  [plugin-id handler params]
+  (if-let [callback-fn (get-in @url-handlers [plugin-id handler :callback])]
+    (try
+      (callback-fn params)
+      (catch js/Error e
+        (js/console.error "Error invoking plugin custom command:" e)))
+    (js/console.warn "No handler found for plugin-id:" plugin-id "and handler:" handler)))
 
 (defn op-pinned-toolbar-item!
   [key op]

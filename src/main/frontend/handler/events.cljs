@@ -969,6 +969,9 @@
   (when-let [blocks (and block (db-model/get-block-immediate-children (state/get-current-repo) (:block/uuid block)))]
     (editor-handler/toggle-blocks-as-own-order-list! blocks)))
 
+(defmethod handle :plugin/custom-url-handler [{:keys [plugin-id handler params]}]
+  (plugin-handler/invoke-plugin-custom-command plugin-id handler params))
+
 (defn run!
   []
   (let [chan (state/get-events-chan)]

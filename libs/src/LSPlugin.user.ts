@@ -274,6 +274,25 @@ const app: Partial<IAppProxy> = {
       flag ? sf(true) : sf()
     }
   },
+
+  onUrlHandle(this: LSPluginUser, handlerName: string, handlerFn: (params: Record<string, string>) => void) {
+    const pid = this.baseInfo.id;
+    const handlerId = Date.now(); // Generate a unique ID
+    this.caller?.call(`api:call`, {
+      method: 'registerUrlHandler',
+      args: [pid, handlerId, handlerName],
+    });
+    this.registerUrlHandler(handlerId, handlerFn);
+  },
+  
+  onUrlUnhandle(this: LSPluginUser, handlerName: string) {
+    const pid = this.baseInfo.id;
+    this.caller?.call(`api:call`, {
+      method: 'unregisterUrlHandler',
+      args: [pid, handlerName],
+    });
+  },
+
 }
 
 let registeredCmdUid = 0
@@ -475,6 +494,7 @@ export class LSPluginUser
   private _debugTag: string = ''
   private _settingsSchema?: Array<SettingSchemaDesc>
   private _connected: boolean = false
+  private _urlHandlers: Map<number, (params: Record<string, string>) => void> = new Map();
 
   /**
    * ui frame identities
@@ -678,6 +698,10 @@ export class LSPluginUser
     } else {
       this.showMainUI()
     }
+  }
+
+  registerUrlHandler(handlerId: number, handler: (params: Record<string, string>) => void) {
+    this._urlHandlers.set(handlerId, handler);
   }
 
   // Getters

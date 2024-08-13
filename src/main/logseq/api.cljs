@@ -434,13 +434,24 @@
       (when-let [action (get-in (palette-handler/get-commands-unique) [id :action])]
         (apply plugin-handler/hook-lifecycle-fn! id action args)))))
 
-(defn ^:export register_plugin_url_handler
-  [pid handler-fn]
-  (when config/lsp-enabled?
-    (let [handler (fn [payload]
-                    (when (= (:plugin-id payload) pid)
-                      (handler-fn (:handler payload) (:params payload))))]
-      (state/add-external-listener! :custom-url-handler handler))))
+(def ^:private *url-handler-id (atom 0))
+
+(defn ^:export onUrlHandle
+  [pid handler-name handler-fn]
+  (when-let [^js pl (plugin-handler/get-plugin-inst pid)]
+    (let [handler-id (str pid "-" (swap! *url-handler-id inc))
+          callback-fn #(plugin-handler/url-handler-callback pl handler-id %)]
+      (plugin-handler/register-url-handler! pid handler-name handler-id callback-fn)
+      (handler-fn callback-fn)
+      (state/add-external-listener! :custom-url-handler 
+        (fn [payload]
+          (when (and (= (:plugin-id payload) pid) 
+                     (= (:handler payload) handler-name))
+            (callback-fn (:params payload))))))))
+
+(defn ^:export onUrlUnhandle
+  [pid handler-name]
+  (plugin-handler/unregister-url-handler! pid handler-name))
 
 ;; flag - boolean | 'toggle'
 (def ^:export set_left_sidebar_visible

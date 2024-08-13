@@ -105,6 +105,16 @@
                         {:key  (some-> (.-pathname parsed-url) (string/replace-first #"^[\/]+" ""))
                          :args (some-> (.-searchParams parsed-url) (js/Object.fromEntries))})
 
+      (= "plugin" url-host)
+      (let [path-parts (string/split (.-pathname parsed-url) #"/")
+            plugin-id (first path-parts)
+            custom-handler (second path-parts)
+            params (js/Object.fromEntries (.-searchParams parsed-url))]
+        (ipc/ipc :plugin/custom-url-handler
+                 {:plugin-id plugin-id
+                  :handler custom-handler
+                  :params params}))
+
       :else
       (send-to-renderer :notification
                         {:type    "error"

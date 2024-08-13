@@ -545,7 +545,15 @@ export interface IAppProxy {
   // internal
   _installPluginHook: (pid: string, hook: string, opts?: any) => void
   _uninstallPluginHook: (pid: string, hookOrAll: string | boolean) => void
+
+  onUrlHandle(handlerName: string, handlerFn: (params: Record<string, string>) => void): void;
+  onUrlUnhandle(handlerName: string): void;
 }
+
+export type LSPluginURLHandlerEvent = {
+  handlerId: string;
+  params: Record<string, string>;
+};
 
 /**
  * Editor related APIs
@@ -946,7 +954,7 @@ export interface ILSPluginThemeManager {
   ): Promise<void>
 }
 
-export type LSPluginUserEvents = 'ui:visible:changed' | 'settings:changed'
+export type LSPluginUserEvents = 'ui:visible:changed' | 'settings:changed' | '#lsp#url#handler#callback'
 
 export interface ILSPluginUser extends EventEmitter<LSPluginUserEvents> {
   /**

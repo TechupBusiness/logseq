@@ -369,6 +369,14 @@ function initApiProxyHandlers(pluginLocal: PluginLocal) {
       Promise.resolve(ret).then(reply, reply)
     }
   })
+
+  pluginLocal.on('#lsp#url#handler#callback', (payload) => {
+    const { handlerId, params } = payload;
+    const handler = pluginLocal.getUrlHandler(handlerId);
+    if (handler) {
+      handler(params);
+    }
+  });
 }
 
 function convertToLSPResource(fullUrl: string, dotPluginRoot: string) {
@@ -410,6 +418,7 @@ class PluginLocal extends EventEmitter<
   private _dotSettingsFile?: string
   private _caller?: LSPluginCaller
   private _logger?: PluginLogger = new PluginLogger('PluginLocal')
+  private _urlHandlers: Map<number, (params: Record<string, string>) => void> = new Map();
 
   /**
    * @param _options
@@ -965,6 +974,18 @@ class PluginLocal extends EventEmitter<
     } else {
       actor?.promise.then(callback)
     }
+  }
+
+  registerUrlHandler(handlerId: number, handler: (params: Record<string, string>) => void) {
+    this._urlHandlers.set(handlerId, handler);
+  }
+
+  unregisterUrlHandler(handlerId: number) {
+    this._urlHandlers.delete(handlerId);
+  }
+
+  getUrlHandler(handlerId: number) {
+    return this._urlHandlers.get(handlerId);
   }
 
   get layoutCore(): any {
