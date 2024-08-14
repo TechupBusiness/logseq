@@ -439,6 +439,7 @@ export interface IAppProxy {
   relaunch: () => Promise<void>
   quit: () => Promise<void>
   openExternalLink: (url: string) => Promise<void>
+  onProtocolHandle: (handler: string, callback: (params: any) => void) => string
 
   /**
    * @deprecated Using `logseq.Git.execCommand`
@@ -1039,6 +1040,10 @@ export interface ILSPluginUser extends EventEmitter<LSPluginUserEvents> {
    * ```
    */
   provideUI(ui: UIOptions): this
+
+  onProtocolHandle(handlerName: string, callback: (params: Record<string, string>) => void): void;
+  
+  onProtocolUnhandle(handlerName: string): void;
 
   /**
    * @example https://github.com/logseq/logseq-plugin-samples/tree/master/logseq-awesome-fonts

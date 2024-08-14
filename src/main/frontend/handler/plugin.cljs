@@ -645,12 +645,84 @@
 
 (defn call-plugin
   [^js pl type payload]
+  (js/console.log "[call-plugin] Called with type:" type)
+  (js/console.log "[call-plugin] Payload:" (js/JSON.stringify (bean/->js payload) nil 2))
   (when pl
-    (.call (.-caller pl) (name type) (bean/->js payload))))
+    (js/console.log "[call-plugin] Plugin object present, calling plugin method")
+    (js/console.log "[call-plugin] Caller:" (.-caller pl))
+    (js/console.log "[call-plugin] Caller type:" (type (.-caller pl)))
+    (try
+      (let [result (.call (.-caller pl) (name type) (bean/->js payload))]
+        (js/console.log "[call-plugin] Plugin method called successfully")
+        (js/console.log "[call-plugin] Result:" result)
+        result)
+      (catch js/Error e
+        (js/console.error "[call-plugin] Error calling plugin method:" e)
+        (throw e))))
+  (when-not pl
+    (js/console.warn "[call-plugin] Plugin object is null or undefined")))
 
 (defn request-callback
   [^js pl req-id payload]
   (call-plugin pl :#lsp#request#callback {:requestId req-id :payload payload}))
+
+(def ^:private protocol-handlers (atom {}))
+(def ^:export *protocol-handlers protocol-handlers)
+
+(defn register-protocol-handler!
+  [pid handler-name handler-id callback-fn]
+  (js/console.log "Registering protocol handler:" pid handler-name handler-id)
+  (swap! protocol-handlers assoc-in [pid handler-name] {:id handler-id :callback callback-fn}))
+
+(defn unregister-protocol-handler!
+  [pid handler-name]
+  (swap! protocol-handlers update pid dissoc handler-name))
+
+(defn protocol-handler-callback
+  [^js pl handler-id payload]
+  (js/console.log "Protocol handler callback:" handler-id payload)
+  (call-plugin pl :#lsp#handleProtocolCallback {:handlerId handler-id :payload payload}))
+
+(defn handle-custom-protocol-event [plugin-id handler params]
+  (js/console.log "[handle-custom-protocol-event] Called with plugin-id:" plugin-id "handler:" handler)
+  (js/console.log "[handle-custom-protocol-event] Params:" params)
+  (js/console.log "[handle-custom-protocol-event] Current protocol handlers:" @protocol-handlers)
+  
+  (p/let [callback-result (if-let [handler-info (get-in @protocol-handlers [plugin-id handler])]
+                            (let [{:keys [id callback]} handler-info
+                                  pl (get-plugin-inst plugin-id)]
+                              (if pl
+                                (try
+                                  (js/console.log "[handle-custom-protocol-event] Plugin instance found, calling handler callback")
+                                  (p/let [result (callback (clj->js params))]
+                                    (js/console.log "[handle-custom-protocol-event] Handler callback executed successfully")
+                                    result)
+                                  (catch js/Error e
+                                    (js/console.error "[handle-custom-protocol-event] Error in custom protocol handler:" e)
+                                    (throw e)))
+                                (do
+                                  (js/console.warn "[handle-custom-protocol-event] Plugin instance not found for plugin-id:" plugin-id)
+                                  nil)))
+                            (do
+                              (js/console.warn "[handle-custom-protocol-event] No handler found for plugin-id:" plugin-id "and handler:" handler)
+                              nil))
+          
+          _ (when-let [^js core-instance js/LSPluginCore]
+              (try
+                (js/console.log "[handle-custom-protocol-event] LSPluginCore instance found")
+                (js/console.log "[handle-custom-protocol-event] Available methods on LSPluginCore:" (js/Object.keys core-instance))
+                
+                (if (fn? (.-emit core-instance))
+                  (do
+                    (.emit core-instance "protocol-handle" #js {:pluginId plugin-id :handler handler :params (clj->js params)})
+                    (js/console.log "[handle-custom-protocol-event] Emitted 'protocol-handle' event on LSPluginCore"))
+                  (js/console.warn "[handle-custom-protocol-event] LSPluginCore does not have an 'emit' method"))
+                
+              (catch js/Error e
+                (js/console.error "[handle-custom-protocol-event] Error interacting with LSPluginCore:" e))))]
+    
+    (js/console.log "[handle-custom-protocol-event] All operations completed")
+    callback-result))
 
 (defn op-pinned-toolbar-item!
   [key op]

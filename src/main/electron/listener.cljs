@@ -17,6 +17,7 @@
             [frontend.handler.ui :as ui-handler]
             [frontend.handler.user :as user]
             [frontend.handler.search :as search-handler]
+            [frontend.handler.plugin :as plugin-handler]
             [frontend.state :as state]
             [frontend.ui :as ui]
             [logseq.common.path :as path]
@@ -195,6 +196,16 @@
                  (fn [^js data]
                    (when-let [k (and data (.-key data))]
                      (state/open-handbook-pane! k)))))
+
+(safe-api-call "pluginProtocolHandler"
+               (fn [data]
+                 (let [{:keys [plugin-id handler params]} (bean/->clj data)]
+                   (-> (plugin-handler/handle-custom-protocol-event plugin-id handler params)
+                       (p/then (fn [result]
+                                 (js/console.log "[pluginProtocolHandler] Protocol handler completed" result)))
+                       (p/catch (fn [error]
+                                  (js/console.error "[pluginProtocolHandler] Error in protocol handler" error)))))))
+
 
 (defn listen!
   []

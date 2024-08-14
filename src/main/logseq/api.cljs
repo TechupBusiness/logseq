@@ -434,6 +434,30 @@
       (when-let [action (get-in (palette-handler/get-commands-unique) [id :action])]
         (apply plugin-handler/hook-lifecycle-fn! id action args)))))
 
+(def ^:private *protocol-handler-id (atom 0))
+
+(defn ^:export onProtocolHandle
+  [pid handler-name]
+  (println "[onProtocolHandle] Called with pid:" pid "handler-name:" handler-name)
+  (if-let [^js pl (plugin-handler/get-plugin-inst pid)]
+    (let [handler-id (str pid "-" (swap! *protocol-handler-id inc))
+          _ (println "[onProtocolHandle] Generated handler-id:" handler-id)
+          callback-fn #(do
+                         (println "[onProtocolHandle] Callback called for handler-id:" handler-id)
+                         (plugin-handler/protocol-handler-callback pl handler-id %))
+          _ (println "[onProtocolHandle] Registering protocol handler")
+          result (plugin-handler/register-protocol-handler! pid handler-name handler-id callback-fn)]
+      (println "[onProtocolHandle] Protocol handler registered. Result:" result)
+      (println "[onProtocolHandle] Returning handler-id:" handler-id)
+      handler-id) ;; Return the handler-id
+    (do
+      (println "[onProtocolHandle] Error: Plugin instance not found for pid:" pid)
+      nil)))
+
+(defn ^:export onProtocolUnhandle
+  [pid handler-name]
+  (plugin-handler/unregister-protocol-handler! pid handler-name))
+
 ;; flag - boolean | 'toggle'
 (def ^:export set_left_sidebar_visible
   (fn [flag]

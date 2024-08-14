@@ -607,6 +607,45 @@ export class LSPluginUser
     return this
   }
 
+  private protocolHandlers: Record<string, (params: Record<string, string>) => void> = {};
+
+  onProtocolHandle(handlerName: string, callback: (params: Record<string, string>) => void): void {
+    const handlerId = `${this.baseInfo.id}-${handlerName}`;
+    console.log(`[LSPluginUser] Registering protocol handler: ${handlerId}`);
+    this._execCallableAPI('onProtocolHandle', this.baseInfo.id, handlerName);
+    this.protocolHandlers[handlerId] = callback;
+    console.log(`[LSPluginUser] Protocol handler registered: ${handlerId}`);
+    console.log(`[LSPluginUser] Current protocol handlers:`, this.protocolHandlers);
+  }
+  
+  onProtocolUnhandle(handlerName: string): void {
+    const handlerId = `${this.baseInfo.id}-${handlerName}`;
+    console.log(`[LSPluginUser] Unregistering protocol handler: ${handlerId}`);
+    delete this.protocolHandlers[handlerId];
+    this._execCallableAPI('onProtocolUnhandle', this.baseInfo.id, handlerName);
+    console.log(`[LSPluginUser] Protocol handler unregistered: ${handlerId}`);
+    console.log(`[LSPluginUser] Current protocol handlers:`, this.protocolHandlers);
+  }
+  
+  handleProtocolCallback(pluginId: string, handlerName: string, params: Record<string, string>): void {
+    const handlerId = `${pluginId}-${handlerName}`;
+    console.log(`[LSPluginUser] Handling protocol callback for: ${handlerId}`);
+    console.log(`[LSPluginUser] Callback params:`, params);
+    console.log(`[LSPluginUser] Available handlers:`, Object.keys(this.protocolHandlers));
+    const callback = this.protocolHandlers[handlerId];
+    if (callback) {
+      console.log(`[LSPluginUser] Executing callback for handler: ${handlerId}`);
+      try {
+        callback(params);
+        console.log(`[LSPluginUser] Callback execution completed for: ${handlerId}`);
+      } catch (error) {
+        console.error(`[LSPluginUser] Error executing callback for ${handlerId}:`, error);
+      }
+    } else {
+      console.warn(`[LSPluginUser] No callback found for handler ID: ${handlerId}`);
+    }
+  }
+
   // Settings related
   useSettingsSchema (schema: Array<SettingSchemaDesc>) {
     if (this.connected) {

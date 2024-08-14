@@ -1103,6 +1103,7 @@ class LSPluginCore
     | 'unlink-plugin'
     | 'beforereload'
     | 'reloaded'
+    | 'protocol-handle'
   >
   implements ILSPluginThemeManager {
   private _isRegistering = false
@@ -1607,6 +1608,32 @@ class LSPluginCore
       // Reset current theme if it is unregistered
       this.emit('reset-custom-theme', this._userPreferences.themes)
     }
+  }
+
+  onProtocolHandle(pluginId: string, handler: string, callback: (params: any) => void): string {
+    const handlerId = `${pluginId}-${handler}`;
+    console.log(`[LSPluginCore] Registering protocol handler: ${handlerId}`);
+    
+    const wrappedCallback = (event: { handler: string; params: any }) => {
+      console.log(`[LSPluginCore] Received protocol event: ${JSON.stringify(event)}`);
+      if (event.handler === handler) {
+        console.log(`[LSPluginCore] Executing callback for handler: ${handler}`);
+        callback(event.params);
+      } else {
+        console.log(`[LSPluginCore] Handler mismatch. Expected: ${handler}, Received: ${event.handler}`);
+      }
+    };
+
+    this.on('protocol-handle', wrappedCallback);
+    console.log(`[LSPluginCore] Protocol handler registered: ${handlerId}`);
+    return handlerId;
+  }
+
+  triggerProtocolHandle(pluginId: string, handler: string, params: any): void {
+    console.log(`[LSPluginCore] Triggering protocol handle: ${pluginId} - ${handler}`);
+    console.log(`[LSPluginCore] Params:`, params);
+    this.emit('protocol-handle', { pluginId, handler, params });
+    console.log(`[LSPluginCore] Protocol handle event emitted`);
   }
 }
 

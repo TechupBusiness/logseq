@@ -105,6 +105,16 @@
                         {:key  (some-> (.-pathname parsed-url) (string/replace-first #"^[\/]+" ""))
                          :args (some-> (.-searchParams parsed-url) (js/Object.fromEntries))})
 
+      (= "plugin" url-host)
+      (let [path-parts (string/split (.-pathname parsed-url) #"/")
+            plugin-id (second path-parts)
+            handler (nth path-parts 2 nil)
+            params (js/Object.fromEntries (.-searchParams parsed-url))]
+        (send-to-renderer win "pluginProtocolHandler"
+                        {:plugin-id plugin-id
+                         :handler handler
+                         :params params}))
+
       :else
       (send-to-renderer :notification
                         {:type    "error"
